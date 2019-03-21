@@ -700,7 +700,7 @@ func (s *SqlSupplier) PendingAutoAddTeamMembers(ctx context.Context, since int64
 
 	var userTeamIDs []*model.UserTeamIDPair
 
-	_, err := s.GetMaster().Select(&userTeamIDs, sql, map[string]interface{}{"Since": since})
+	_, err := s.GetReplica().Select(&userTeamIDs, sql, map[string]interface{}{"Since": since})
 	if err != nil {
 		result.Err = model.NewAppError("SqlGroupStore.PendingAutoAddTeamMembers", "store.select_error", nil, err.Error(), http.StatusInternalServerError)
 	}
@@ -742,7 +742,7 @@ func (s *SqlSupplier) PendingAutoAddChannelMembers(ctx context.Context, since in
 
 	var userChannelIDs []*model.UserChannelIDPair
 
-	_, err := s.GetMaster().Select(&userChannelIDs, sql, map[string]interface{}{"Since": since})
+	_, err := s.GetReplica().Select(&userChannelIDs, sql, map[string]interface{}{"Since": since})
 	if err != nil {
 		result.Err = model.NewAppError("SqlGroupStore.PendingAutoAddChannelMembers", "store.select_error", nil, "", http.StatusInternalServerError)
 	}
@@ -764,4 +764,68 @@ func groupSyncableToGroupChannel(groupSyncable *model.GroupSyncable) *groupChann
 		GroupSyncable: *groupSyncable,
 		ChannelId:     groupSyncable.SyncableId,
 	}
+}
+
+// PendingTeamMemberRemovals returns a record for each team member that should be removed from the team based on
+// group constraints.
+func (s *SqlSupplier) PendingTeamMemberRemovals(ctx context.Context, hints ...store.LayeredStoreHint) *store.LayeredStoreSupplierResult {
+	result := store.NewSupplierResult()
+
+	sql := `SELECT
+				TeamMembers.UserId, Teams.Id AS TeamId
+			FROM
+				GroupMembers
+				JOIN GroupTeams
+				ON GroupMembers.GroupId = GroupTeams.GroupId
+				JOIN Teams ON GroupTeams.TeamId = Teams.Id
+				JOIN TeamMembers
+				ON
+					GroupTeams.TeamId = TeamMembers.TeamId
+					AND GroupMembers.UserId = TeamMembers.UserId
+			WHERE
+				Teams.GroupConstrained = true
+				AND GroupMembers.DeleteAt != 0`
+
+	var userTeamIDs []*model.UserTeamIDPair
+
+	_, err := s.GetReplica().Select(&userTeamIDs, sql)
+	if err != nil {
+		result.Err = model.NewAppError("SqlGroupStore.PendingTeamMemberRemovals", "store.select_error", nil, "", http.StatusInternalServerError)
+	}
+
+	result.Data = userTeamIDs
+
+	return result
+}
+
+// PendingChannelMemberRemovals returns a record for each channel member that should be removed from the channel
+// based on group constraints.
+func (s *SqlSupplier) PendingChannelMemberRemovals(ctx context.Context, hints ...store.LayeredStoreHint) *store.LayeredStoreSupplierResult {
+	result := store.NewSupplierResult()
+
+	sql := `SELECT
+				*
+			FROM
+				GroupMembers
+				JOIN GroupChannels
+				ON GroupMembers.GroupId = GroupChannels.GroupId
+				JOIN Channels ON GroupChannels.ChannelId = Channels.Id
+				JOIN ChannelMembers
+				ON
+					GroupChannels.ChannelId = ChannelMembers.ChannelId
+					AND GroupMembers.UserId = ChannelMembers.UserId
+			WHERE
+				Channels.GroupConstrained = true
+				AND GroupMembers.DeleteAt != 0`
+
+	var userChannelIDs []*model.UserChannelIDPair
+
+	_, err := s.GetReplica().Select(&userChannelIDs, sql)
+	if err != nil {
+		result.Err = model.NewAppError("SqlGroupStore.PendingChannelMemberRemovals", "store.select_error", nil, "", http.StatusInternalServerError)
+	}
+
+	result.Data = userChannelIDs
+
+	return result
 }

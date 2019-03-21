@@ -93,10 +93,18 @@ func (s *LocalCacheSupplier) GroupDeleteGroupSyncable(ctx context.Context, group
 	return s.Next().GroupDeleteGroupSyncable(ctx, groupID, syncableID, syncableType, hints...)
 }
 
-func (s *LocalCacheSupplier) PendingAutoAddTeamMembers(ctx context.Context, minGroupMembersCreateAt int64, hints ...LayeredStoreHint) *LayeredStoreSupplierResult {
-	return s.Next().PendingAutoAddTeamMembers(ctx, minGroupMembersCreateAt, hints...)
+func (s *LocalCacheSupplier) PendingAutoAddTeamMembers(ctx context.Context, since int64, hints ...LayeredStoreHint) *LayeredStoreSupplierResult {
+	return s.Next().PendingAutoAddTeamMembers(ctx, since, hints...)
 }
 
-func (s *LocalCacheSupplier) PendingAutoAddChannelMembers(ctx context.Context, minGroupMembersCreateAt int64, hints ...LayeredStoreHint) *LayeredStoreSupplierResult {
-	return s.Next().PendingAutoAddChannelMembers(ctx, minGroupMembersCreateAt, hints...)
+func (s *LocalCacheSupplier) PendingAutoAddChannelMembers(ctx context.Context, since int64, hints ...LayeredStoreHint) *LayeredStoreSupplierResult {
+	return s.Next().PendingAutoAddChannelMembers(ctx, since, hints...)
+}
+
+func (s *LocalCacheSupplier) PendingTeamMemberRemovals(ctx context.Context, hints ...LayeredStoreHint) *LayeredStoreSupplierResult {
+	return s.Next().PendingTeamMemberRemovals(ctx, hints...)
+}
+
+func (s *LocalCacheSupplier) PendingChannelMemberRemovals(ctx context.Context, hints ...LayeredStoreHint) *LayeredStoreSupplierResult {
+	return s.Next().PendingChannelMemberRemovals(ctx, hints...)
 }

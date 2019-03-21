@@ -4,13 +4,15 @@
 package app
 
 import (
+	"fmt"
+
 	"github.com/mattermost/mattermost-server/mlog"
 )
 
-// PopulateSyncablesSince adds users to teams and channels based on their group memberships and how those groups are
+// CreateDefaultMemberships adds users to teams and channels based on their group memberships and how those groups are
 // configured to sync with teams and channels for group members on or after the given timestamp.
-func (a *App) PopulateSyncablesSince(groupMembersCreatedAfter int64) error {
-	userTeamIDs, appErr := a.PendingAutoAddTeamMembers(groupMembersCreatedAfter)
+func (a *App) CreateDefaultMemberships(since int64) error {
+	userTeamIDs, appErr := a.PendingAutoAddTeamMembers(since)
 	if appErr != nil {
 		return appErr
 	}
@@ -27,7 +29,7 @@ func (a *App) PopulateSyncablesSince(groupMembersCreatedAfter int64) error {
 		)
 	}
 
-	userChannelIDs, appErr := a.PendingAutoAddChannelMembers(groupMembersCreatedAfter)
+	userChannelIDs, appErr := a.PendingAutoAddChannelMembers(since)
 	if appErr != nil {
 		return appErr
 	}
@@ -57,6 +59,32 @@ func (a *App) PopulateSyncablesSince(groupMembersCreatedAfter int64) error {
 			mlog.String("user_id", userChannel.UserID),
 			mlog.String("channel_id", userChannel.ChannelID),
 		)
+	}
+
+	return nil
+}
+
+// DeleteGroupConstrainedMemberships deletes team and channel memberships of non group members for all
+// group-constrained teams and channels.
+func (a *App) DeleteGroupConstrainedMemberships() error {
+	userChannelIDs, appErr := a.PendingChannelMemberRemovals()
+	if appErr != nil {
+		return appErr
+	}
+
+	for _, userChannel := range userChannelIDs {
+		fmt.Printf("userID: %q, channelID: %q\n", userChannel.UserID, userChannel.ChannelID)
+		// TODO: Remove user from channel
+	}
+
+	userTeamIDs, appErr := a.PendingTeamMemberRemovals()
+	if appErr != nil {
+		return appErr
+	}
+
+	for _, userTeam := range userTeamIDs {
+		fmt.Printf("userID: %q, teamID: %q\n", userTeam.UserID, userTeam.TeamID)
+		// TODO: Remove user from team
 	}
 
 	return nil

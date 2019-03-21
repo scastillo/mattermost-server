@@ -89,12 +89,22 @@ func (s *RedisSupplier) GroupDeleteGroupSyncable(ctx context.Context, groupID st
 	return s.Next().GroupDeleteGroupSyncable(ctx, groupID, syncableID, syncableType, hints...)
 }
 
-func (s *RedisSupplier) PendingAutoAddTeamMembers(ctx context.Context, minGroupMembersCreateAt int64, hints ...LayeredStoreHint) *LayeredStoreSupplierResult {
+func (s *RedisSupplier) PendingAutoAddTeamMembers(ctx context.Context, since int64, hints ...LayeredStoreHint) *LayeredStoreSupplierResult {
 	// TODO: Redis caching.
-	return s.Next().PendingAutoAddTeamMembers(ctx, minGroupMembersCreateAt, hints...)
+	return s.Next().PendingAutoAddTeamMembers(ctx, since, hints...)
 }
 
-func (s *RedisSupplier) PendingAutoAddChannelMembers(ctx context.Context, minGroupMembersCreateAt int64, hints ...LayeredStoreHint) *LayeredStoreSupplierResult {
+func (s *RedisSupplier) PendingAutoAddChannelMembers(ctx context.Context, since int64, hints ...LayeredStoreHint) *LayeredStoreSupplierResult {
 	// TODO: Redis caching.
-	return s.Next().PendingAutoAddChannelMembers(ctx, minGroupMembersCreateAt, hints...)
+	return s.Next().PendingAutoAddChannelMembers(ctx, since, hints...)
+}
+
+func (s *RedisSupplier) PendingTeamMemberRemovals(ctx context.Context, hints ...LayeredStoreHint) *LayeredStoreSupplierResult {
+	// TODO: Redis caching.
+	return s.Next().PendingTeamMemberRemovals(ctx, hints...)
+}
+
+func (s *RedisSupplier) PendingChannelMemberRemovals(ctx context.Context, hints ...LayeredStoreHint) *LayeredStoreSupplierResult {
+	// TODO: Redis caching.
+	return s.Next().PendingChannelMemberRemovals(ctx, hints...)
 }

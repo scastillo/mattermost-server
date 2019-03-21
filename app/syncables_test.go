@@ -113,7 +113,7 @@ func TestPopulateSyncablesSince(t *testing.T) {
 		t.Errorf("test groupmember not created: %s", err.Error())
 	}
 
-	pErr := th.App.PopulateSyncablesSince(0)
+	pErr := th.App.CreateDefaultMemberships(0)
 	if pErr != nil {
 		t.Errorf("faild to populate syncables: %s", pErr.Error())
 	}
@@ -183,7 +183,7 @@ func TestPopulateSyncablesSince(t *testing.T) {
 	}
 
 	// Sync everything after syncable was created (proving that team updates trigger re-sync)
-	pErr = th.App.PopulateSyncablesSince(scientistGroupMember.CreateAt + 1)
+	pErr = th.App.CreateDefaultMemberships(scientistGroupMember.CreateAt + 1)
 	if pErr != nil {
 		t.Errorf("faild to populate syncables: %s", pErr.Error())
 	}
@@ -226,7 +226,7 @@ func TestPopulateSyncablesSince(t *testing.T) {
 	}
 
 	// Sync everything after syncable was created (proving that channel updates trigger re-sync)
-	pErr = th.App.PopulateSyncablesSince(scientistGroupMember.CreateAt + 1)
+	pErr = th.App.CreateDefaultMemberships(scientistGroupMember.CreateAt + 1)
 	if pErr != nil {
 		t.Errorf("faild to populate syncables: %s", pErr.Error())
 	}
@@ -251,7 +251,7 @@ func TestPopulateSyncablesSince(t *testing.T) {
 	}
 
 	// Even re-syncing from the beginning doesn't re-add to channel or team
-	pErr = th.App.PopulateSyncablesSince(0)
+	pErr = th.App.CreateDefaultMemberships(0)
 	if pErr != nil {
 		t.Errorf("faild to populate syncables: %s", pErr.Error())
 	}
@@ -292,7 +292,7 @@ func TestPopulateSyncablesSince(t *testing.T) {
 		t.Errorf("error updating group syncable: %s", err.Error())
 	}
 
-	pErr = th.App.PopulateSyncablesSince(0)
+	pErr = th.App.CreateDefaultMemberships(0)
 	if pErr != nil {
 		t.Errorf("faild to populate syncables: %s", pErr.Error())
 	}
@@ -313,7 +313,7 @@ func TestPopulateSyncablesSince(t *testing.T) {
 		t.Errorf("error permanently deleting channelmemberhistory: %s", result.Err.Error())
 	}
 
-	pErr = th.App.PopulateSyncablesSince(scienceChannelGroupSyncable.UpdateAt)
+	pErr = th.App.CreateDefaultMemberships(scienceChannelGroupSyncable.UpdateAt)
 	if pErr != nil {
 		t.Errorf("failed to populate syncables: %s", pErr.Error())
 	}
@@ -329,7 +329,7 @@ func TestPopulateSyncablesSince(t *testing.T) {
 		t.Errorf("error permanently deleting channelmemberhistory: %s", result.Err.Error())
 	}
 
-	pErr = th.App.PopulateSyncablesSince(scienceChannelGroupSyncable.UpdateAt)
+	pErr = th.App.CreateDefaultMemberships(scienceChannelGroupSyncable.UpdateAt)
 	if pErr != nil {
 		t.Errorf("failed to populate syncables: %s", pErr.Error())
 	}

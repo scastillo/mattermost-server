@@ -454,14 +454,26 @@ func (s *LayeredGroupStore) DeleteGroupSyncable(groupID string, syncableID strin
 	})
 }
 
-func (s *LayeredGroupStore) PendingAutoAddTeamMembers(minGroupMembersCreateAt int64) StoreChannel {
+func (s *LayeredGroupStore) PendingAutoAddTeamMembers(since int64) StoreChannel {
 	return s.RunQuery(func(supplier LayeredStoreSupplier) *LayeredStoreSupplierResult {
-		return supplier.PendingAutoAddTeamMembers(s.TmpContext, minGroupMembersCreateAt)
+		return supplier.PendingAutoAddTeamMembers(s.TmpContext, since)
 	})
 }
 
-func (s *LayeredGroupStore) PendingAutoAddChannelMembers(minGroupMembersCreateAt int64) StoreChannel {
+func (s *LayeredGroupStore) PendingAutoAddChannelMembers(since int64) StoreChannel {
 	return s.RunQuery(func(supplier LayeredStoreSupplier) *LayeredStoreSupplierResult {
-		return supplier.PendingAutoAddChannelMembers(s.TmpContext, minGroupMembersCreateAt)
+		return supplier.PendingAutoAddChannelMembers(s.TmpContext, since)
+	})
+}
+
+func (s *LayeredGroupStore) PendingTeamMemberRemovals() StoreChannel {
+	return s.RunQuery(func(supplier LayeredStoreSupplier) *LayeredStoreSupplierResult {
+		return supplier.PendingTeamMemberRemovals(s.TmpContext)
+	})
+}
+
+func (s *LayeredGroupStore) PendingChannelMemberRemovals() StoreChannel {
+	return s.RunQuery(func(supplier LayeredStoreSupplier) *LayeredStoreSupplierResult {
+		return supplier.PendingChannelMemberRemovals(s.TmpContext)
 	})
 }
