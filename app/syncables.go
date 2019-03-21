@@ -4,8 +4,6 @@
 package app
 
 import (
-	"fmt"
-
 	"github.com/mattermost/mattermost-server/mlog"
 )
 
@@ -73,8 +71,20 @@ func (a *App) DeleteGroupConstrainedMemberships() error {
 	}
 
 	for _, userChannel := range userChannelIDs {
-		fmt.Printf("userID: %q, channelID: %q\n", userChannel.UserID, userChannel.ChannelID)
-		// TODO: Remove user from channel
+		channel, err := a.GetChannel(userChannel.ChannelID)
+		if err != nil {
+			return err
+		}
+
+		err = a.RemoveUserFromChannel(userChannel.UserID, "", channel) // TODO: Determine removerUserId.
+		if err != nil {
+			return err
+		}
+
+		a.Log.Info("removed channelmember",
+			mlog.String("user_id", userChannel.UserID),
+			mlog.String("channel_id", channel.Id),
+		)
 	}
 
 	userTeamIDs, appErr := a.PendingTeamMemberRemovals()
@@ -83,8 +93,15 @@ func (a *App) DeleteGroupConstrainedMemberships() error {
 	}
 
 	for _, userTeam := range userTeamIDs {
-		fmt.Printf("userID: %q, teamID: %q\n", userTeam.UserID, userTeam.TeamID)
-		// TODO: Remove user from team
+		err := a.RemoveUserFromTeam(userTeam.TeamID, userTeam.UserID, "") // TODO: Determine requestorId.
+		if err != nil {
+			return err
+		}
+
+		a.Log.Info("removed teammember",
+			mlog.String("user_id", userTeam.UserID),
+			mlog.String("team_id", userTeam.TeamID),
+		)
 	}
 
 	return nil
