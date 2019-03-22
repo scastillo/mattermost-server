@@ -771,20 +771,21 @@ func groupSyncableToGroupChannel(groupSyncable *model.GroupSyncable) *groupChann
 func (s *SqlSupplier) PendingTeamMemberRemovals(ctx context.Context, hints ...store.LayeredStoreHint) *store.LayeredStoreSupplierResult {
 	result := store.NewSupplierResult()
 
-	sql := `SELECT
-				TeamMembers.UserId, Teams.Id AS TeamId
-			FROM
-				GroupMembers
-				JOIN GroupTeams
-				ON GroupMembers.GroupId = GroupTeams.GroupId
-				JOIN Teams ON GroupTeams.TeamId = Teams.Id
-				JOIN TeamMembers
-				ON
-					GroupTeams.TeamId = TeamMembers.TeamId
-					AND GroupMembers.UserId = TeamMembers.UserId
-			WHERE
-				Teams.GroupConstrained = true
-				AND GroupMembers.DeleteAt != 0`
+	sql := `
+		SELECT
+			TeamMembers.UserId, Teams.Id AS TeamId
+		FROM
+			GroupMembers
+			JOIN GroupTeams
+			ON GroupMembers.GroupId = GroupTeams.GroupId
+			JOIN Teams ON GroupTeams.TeamId = Teams.Id
+			JOIN TeamMembers
+			ON
+				GroupTeams.TeamId = TeamMembers.TeamId
+				AND GroupMembers.UserId = TeamMembers.UserId
+		WHERE
+			Teams.GroupConstrained = true
+			AND GroupMembers.DeleteAt != 0`
 
 	var userTeamIDs []*model.UserTeamIDPair
 
@@ -803,20 +804,21 @@ func (s *SqlSupplier) PendingTeamMemberRemovals(ctx context.Context, hints ...st
 func (s *SqlSupplier) PendingChannelMemberRemovals(ctx context.Context, hints ...store.LayeredStoreHint) *store.LayeredStoreSupplierResult {
 	result := store.NewSupplierResult()
 
-	sql := `SELECT
-				*
-			FROM
-				GroupMembers
-				JOIN GroupChannels
-				ON GroupMembers.GroupId = GroupChannels.GroupId
-				JOIN Channels ON GroupChannels.ChannelId = Channels.Id
-				JOIN ChannelMembers
-				ON
-					GroupChannels.ChannelId = ChannelMembers.ChannelId
-					AND GroupMembers.UserId = ChannelMembers.UserId
-			WHERE
-				Channels.GroupConstrained = true
-				AND GroupMembers.DeleteAt != 0`
+	sql := `
+		SELECT
+			*
+		FROM
+			GroupMembers
+			JOIN GroupChannels
+			ON GroupMembers.GroupId = GroupChannels.GroupId
+			JOIN Channels ON GroupChannels.ChannelId = Channels.Id
+			JOIN ChannelMembers
+			ON
+				GroupChannels.ChannelId = ChannelMembers.ChannelId
+				AND GroupMembers.UserId = ChannelMembers.UserId
+		WHERE
+			Channels.GroupConstrained = true
+			AND GroupMembers.DeleteAt != 0`
 
 	var userChannelIDs []*model.UserChannelIDPair
 
