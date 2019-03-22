@@ -806,7 +806,7 @@ func (s *SqlSupplier) PendingChannelMemberRemovals(ctx context.Context, hints ..
 
 	sql := `
 		SELECT
-			*
+			ChannelMembers.UserId, Channels.Id AS ChannelId
 		FROM
 			GroupMembers
 			JOIN GroupChannels
