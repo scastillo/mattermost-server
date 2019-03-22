@@ -4,6 +4,7 @@
 package storetest
 
 import (
+	"database/sql"
 	"strings"
 	"testing"
 
@@ -33,6 +34,9 @@ func TestGroupStore(t *testing.T, ss store.Store) {
 
 	t.Run("PendingAutoAddTeamMembers", func(t *testing.T) { testPendingAutoAddTeamMembers(t, ss) })
 	t.Run("PendingAutoAddChannelMembers", func(t *testing.T) { testPendingAutoAddChannelMembers(t, ss) })
+
+	t.Run("PendingTeamMemberRemovals", func(t *testing.T) { testPendingTeamMemberRemovals(t, ss) })
+	t.Run("PendingChannelMemberRemovals", func(t *testing.T) { testPendingChannelMemberRemovals(t, ss) })
 }
 
 func testGroupStoreCreate(t *testing.T, ss store.Store) {
@@ -1277,4 +1281,266 @@ func testPendingAutoAddChannelMembers(t *testing.T, ss store.Store) {
 	res = <-ss.Group().PendingAutoAddChannelMembers(0)
 	assert.Nil(t, res.Err)
 	assert.Len(t, res.Data, 1)
+}
+
+func testPendingTeamMemberRemovals(t *testing.T, ss store.Store) {
+	data := pendingMemberRemovalsDataSetup(t, ss)
+
+	// no results when both users are in the group
+	res := <-ss.Group().PendingTeamMemberRemovals()
+	assert.Nil(t, res.Err)
+	assert.Len(t, res.Data, 0)
+
+	res = <-ss.Group().DeleteMember(data.Group.Id, data.UserB.Id)
+	assert.Nil(t, res.Err)
+
+	// user b should be returned after being removed from group
+	res = <-ss.Group().PendingTeamMemberRemovals()
+	assert.Nil(t, res.Err)
+	assert.Len(t, res.Data, 1)
+	idPairs := res.Data.([]*model.UserTeamIDPair)
+	assert.Equal(t, data.UserB.Id, idPairs[0].UserID)
+	assert.Equal(t, data.ConstrainedTeam.Id, idPairs[0].TeamID)
+
+	res = <-ss.Group().DeleteMember(data.Group.Id, data.UserA.Id)
+	assert.Nil(t, res.Err)
+
+	res = <-ss.Group().PendingTeamMemberRemovals()
+	assert.Nil(t, res.Err)
+	assert.Len(t, res.Data, 2)
+
+	// add users back to groups
+	res = <-ss.Group().CreateOrRestoreMember(data.Group.Id, data.UserA.Id)
+	assert.Nil(t, res.Err)
+	res = <-ss.Group().CreateOrRestoreMember(data.Group.Id, data.UserB.Id)
+	assert.Nil(t, res.Err)
+}
+
+func testPendingChannelMemberRemovals(t *testing.T, ss store.Store) {
+	data := pendingMemberRemovalsDataSetup(t, ss)
+
+	// no results when both users are in the group
+	res := <-ss.Group().PendingChannelMemberRemovals()
+	assert.Nil(t, res.Err)
+	assert.Len(t, res.Data, 0)
+
+	res = <-ss.Group().DeleteMember(data.Group.Id, data.UserB.Id)
+	assert.Nil(t, res.Err)
+
+	// user b should be returned after being removed from group
+	res = <-ss.Group().PendingChannelMemberRemovals()
+	assert.Nil(t, res.Err)
+	assert.Len(t, res.Data, 1)
+	idPairs := res.Data.([]*model.UserChannelIDPair)
+	assert.Equal(t, data.UserB.Id, idPairs[0].UserID)
+	assert.Equal(t, data.ConstrainedChannel.Id, idPairs[0].ChannelID)
+
+	res = <-ss.Group().DeleteMember(data.Group.Id, data.UserA.Id)
+	assert.Nil(t, res.Err)
+
+	res = <-ss.Group().PendingChannelMemberRemovals()
+	assert.Nil(t, res.Err)
+	assert.Len(t, res.Data, 2)
+
+	// add users back to groups
+	res = <-ss.Group().CreateOrRestoreMember(data.Group.Id, data.UserA.Id)
+	assert.Nil(t, res.Err)
+	res = <-ss.Group().CreateOrRestoreMember(data.Group.Id, data.UserB.Id)
+	assert.Nil(t, res.Err)
+}
+
+type removalsData struct {
+	UserA                *model.User
+	UserB                *model.User
+	ConstrainedChannel   *model.Channel
+	UnconstrainedChannel *model.Channel
+	ConstrainedTeam      *model.Team
+	UnconstrainedTeam    *model.Team
+	Group                *model.Group
+}
+
+func pendingMemberRemovalsDataSetup(t *testing.T, ss store.Store) *removalsData {
+	// create group
+	res := <-ss.Group().Create(&model.Group{
+		Name:        model.NewId(),
+		DisplayName: "Pending[Channel|Team]MemberRemovals Test Group",
+		RemoteId:    model.NewId(),
+		Source:      model.GroupSourceLdap,
+	})
+	assert.Nil(t, res.Err)
+	group := res.Data.(*model.Group)
+
+	// create users
+	userA := &model.User{
+		Email:    MakeEmail(),
+		Username: model.NewId(),
+	}
+	res = <-ss.User().Save(userA)
+	assert.Nil(t, res.Err)
+	userA = res.Data.(*model.User)
+
+	userB := &model.User{
+		Email:    MakeEmail(),
+		Username: model.NewId(),
+	}
+	res = <-ss.User().Save(userB)
+	assert.Nil(t, res.Err)
+	userB = res.Data.(*model.User)
+
+	// add users to group
+	res = <-ss.Group().CreateOrRestoreMember(group.Id, userA.Id)
+	assert.Nil(t, res.Err)
+
+	res = <-ss.Group().CreateOrRestoreMember(group.Id, userB.Id)
+	assert.Nil(t, res.Err)
+
+	// create channels
+	channelConstrained := &model.Channel{
+		TeamId:           model.NewId(),
+		DisplayName:      "A Name",
+		Name:             model.NewId(),
+		Type:             model.CHANNEL_PRIVATE,
+		GroupConstrained: sql.NullBool{Valid: true, Bool: true},
+	}
+	res = <-ss.Channel().Save(channelConstrained, 9999)
+	assert.Nil(t, res.Err)
+	channelConstrained = res.Data.(*model.Channel)
+
+	channelUnconstrained := &model.Channel{
+		TeamId:      model.NewId(),
+		DisplayName: "A Name",
+		Name:        model.NewId(),
+		Type:        model.CHANNEL_PRIVATE,
+	}
+	res = <-ss.Channel().Save(channelUnconstrained, 9999)
+	assert.Nil(t, res.Err)
+	channelUnconstrained = res.Data.(*model.Channel)
+
+	// create teams
+	teamConstrained := &model.Team{
+		DisplayName:      "Name",
+		Description:      "Some description",
+		CompanyName:      "Some company name",
+		AllowOpenInvite:  false,
+		InviteId:         "inviteid0",
+		Name:             "z-z-" + model.NewId() + "a",
+		Email:            "success+" + model.NewId() + "@simulator.amazonses.com",
+		Type:             model.TEAM_INVITE,
+		GroupConstrained: sql.NullBool{Valid: true, Bool: true},
+	}
+	res = <-ss.Team().Save(teamConstrained)
+	assert.Nil(t, res.Err)
+	teamConstrained = res.Data.(*model.Team)
+
+	teamUnconstrained := &model.Team{
+		DisplayName:     "Name",
+		Description:     "Some description",
+		CompanyName:     "Some company name",
+		AllowOpenInvite: false,
+		InviteId:        "inviteid1",
+		Name:            "z-z-" + model.NewId() + "a",
+		Email:           "success+" + model.NewId() + "@simulator.amazonses.com",
+		Type:            model.TEAM_INVITE,
+	}
+	res = <-ss.Team().Save(teamUnconstrained)
+	assert.Nil(t, res.Err)
+	teamUnconstrained = res.Data.(*model.Team)
+
+	// create groupteams
+	res = <-ss.Group().CreateGroupSyncable(&model.GroupSyncable{
+		AutoAdd:    true,
+		SyncableId: teamConstrained.Id,
+		Type:       model.GroupSyncableTypeTeam,
+		GroupId:    group.Id,
+	})
+	assert.Nil(t, res.Err)
+
+	res = <-ss.Group().CreateGroupSyncable(&model.GroupSyncable{
+		AutoAdd:    true,
+		SyncableId: teamUnconstrained.Id,
+		Type:       model.GroupSyncableTypeTeam,
+		GroupId:    group.Id,
+	})
+	assert.Nil(t, res.Err)
+
+	// create groupchannels
+	res = <-ss.Group().CreateGroupSyncable(&model.GroupSyncable{
+		AutoAdd:    true,
+		SyncableId: channelConstrained.Id,
+		Type:       model.GroupSyncableTypeChannel,
+		GroupId:    group.Id,
+	})
+	assert.Nil(t, res.Err)
+
+	res = <-ss.Group().CreateGroupSyncable(&model.GroupSyncable{
+		AutoAdd:    true,
+		SyncableId: channelUnconstrained.Id,
+		Type:       model.GroupSyncableTypeChannel,
+		GroupId:    group.Id,
+	})
+	assert.Nil(t, res.Err)
+
+	// add users to teams
+	res = <-ss.Team().SaveMember(&model.TeamMember{
+		TeamId: teamConstrained.Id,
+		UserId: userA.Id,
+	}, 99)
+	assert.Nil(t, res.Err)
+
+	res = <-ss.Team().SaveMember(&model.TeamMember{
+		TeamId: teamUnconstrained.Id,
+		UserId: userA.Id,
+	}, 99)
+	assert.Nil(t, res.Err)
+
+	res = <-ss.Team().SaveMember(&model.TeamMember{
+		TeamId: teamConstrained.Id,
+		UserId: userB.Id,
+	}, 99)
+	assert.Nil(t, res.Err)
+
+	res = <-ss.Team().SaveMember(&model.TeamMember{
+		TeamId: teamUnconstrained.Id,
+		UserId: userB.Id,
+	}, 99)
+	assert.Nil(t, res.Err)
+
+	// add users to channels
+	res = <-ss.Channel().SaveMember(&model.ChannelMember{
+		ChannelId:   channelConstrained.Id,
+		UserId:      userA.Id,
+		NotifyProps: model.GetDefaultChannelNotifyProps(),
+	})
+	assert.Nil(t, res.Err)
+
+	res = <-ss.Channel().SaveMember(&model.ChannelMember{
+		ChannelId:   channelUnconstrained.Id,
+		UserId:      userA.Id,
+		NotifyProps: model.GetDefaultChannelNotifyProps(),
+	})
+	assert.Nil(t, res.Err)
+
+	res = <-ss.Channel().SaveMember(&model.ChannelMember{
+		ChannelId:   channelConstrained.Id,
+		UserId:      userB.Id,
+		NotifyProps: model.GetDefaultChannelNotifyProps(),
+	})
+	assert.Nil(t, res.Err)
+
+	res = <-ss.Channel().SaveMember(&model.ChannelMember{
+		ChannelId:   channelUnconstrained.Id,
+		UserId:      userB.Id,
+		NotifyProps: model.GetDefaultChannelNotifyProps(),
+	})
+	assert.Nil(t, res.Err)
+
+	return &removalsData{
+		UserA:                userA,
+		UserB:                userB,
+		ConstrainedChannel:   channelConstrained,
+		UnconstrainedChannel: channelUnconstrained,
+		ConstrainedTeam:      teamConstrained,
+		UnconstrainedTeam:    teamUnconstrained,
+		Group:                group,
+	}
 }
