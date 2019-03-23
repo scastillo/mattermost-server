@@ -62,8 +62,8 @@ func (a *App) CreateDefaultMemberships(since int64) error {
 	return nil
 }
 
-// DeleteGroupConstrainedMemberships deletes team and channel memberships of non group members for all
-// group-constrained teams and channels.
+// DeleteGroupConstrainedMemberships deletes team and channel memberships of users who aren't members of the allowed
+// groups of all group-constrained teams and channels.
 func (a *App) DeleteGroupConstrainedMemberships() error {
 	userChannelIDs, appErr := a.PendingChannelMemberRemovals()
 	if appErr != nil {

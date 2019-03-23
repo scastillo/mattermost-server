@@ -773,19 +773,33 @@ func (s *SqlSupplier) PendingTeamMemberRemovals(ctx context.Context, hints ...st
 
 	sql := `
 		SELECT
-			TeamMembers.UserId, Teams.Id AS TeamId
+			TeamMembers.TeamId,
+			TeamMembers.UserId
 		FROM
-			GroupMembers
-			JOIN GroupTeams
-			ON GroupMembers.GroupId = GroupTeams.GroupId
-			JOIN Teams ON GroupTeams.TeamId = Teams.Id
-			JOIN TeamMembers
-			ON
-				GroupTeams.TeamId = TeamMembers.TeamId
-				AND GroupMembers.UserId = TeamMembers.UserId
+			TeamMembers
+			JOIN Teams ON Teams.Id = TeamMembers.TeamId
 		WHERE
-			Teams.GroupConstrained = true
-			AND GroupMembers.DeleteAt != 0`
+			TeamMembers.DeleteAt = 0
+			AND Teams.DeleteAt = 0
+			AND Teams.GroupConstrained = TRUE
+			AND (TeamMembers.TeamId, TeamMembers.UserId)
+			NOT IN (
+				SELECT
+					Teams.Id AS TeamId, GroupMembers.UserId
+				FROM
+					Teams
+					JOIN GroupTeams ON GroupTeams.TeamId = Teams.Id
+					JOIN UserGroups ON UserGroups.Id = GroupTeams.GroupId
+					JOIN GroupMembers ON GroupMembers.GroupId = UserGroups.Id
+				WHERE
+					Teams.GroupConstrained = TRUE
+					AND GroupTeams.DeleteAt = 0
+					AND UserGroups.DeleteAt = 0
+					AND Teams.DeleteAt = 0
+					AND GroupMembers.DeleteAt = 0
+				GROUP BY
+					Teams.Id,
+					GroupMembers.UserId)`
 
 	var userTeamIDs []*model.UserTeamIDPair
 
@@ -806,25 +820,38 @@ func (s *SqlSupplier) PendingChannelMemberRemovals(ctx context.Context, hints ..
 
 	sql := `
 		SELECT
-			ChannelMembers.UserId, Channels.Id AS ChannelId
+			ChannelMembers.ChannelId,
+			ChannelMembers.UserId
 		FROM
-			GroupMembers
-			JOIN GroupChannels
-			ON GroupMembers.GroupId = GroupChannels.GroupId
-			JOIN Channels ON GroupChannels.ChannelId = Channels.Id
-			JOIN ChannelMembers
-			ON
-				GroupChannels.ChannelId = ChannelMembers.ChannelId
-				AND GroupMembers.UserId = ChannelMembers.UserId
+			ChannelMembers
+			JOIN Channels ON Channels.Id = ChannelMembers.ChannelId
 		WHERE
-			Channels.GroupConstrained = true
-			AND GroupMembers.DeleteAt != 0`
+			Channels.DeleteAt = 0
+			AND Channels.GroupConstrained = TRUE
+			AND (ChannelMembers.ChannelId, ChannelMembers.UserId)
+			NOT IN (
+				SELECT
+					Channels.Id AS ChannelId, GroupMembers.UserId
+				FROM
+					Channels
+					JOIN GroupChannels ON GroupChannels.ChannelId = Channels.Id
+					JOIN UserGroups ON UserGroups.Id = GroupChannels.GroupId
+					JOIN GroupMembers ON GroupMembers.GroupId = UserGroups.Id
+				WHERE
+					Channels.GroupConstrained = TRUE
+					AND GroupChannels.DeleteAt = 0
+					AND UserGroups.DeleteAt = 0
+					AND Channels.DeleteAt = 0
+					AND GroupMembers.DeleteAt = 0
+				GROUP BY
+					Channels.Id,
+					GroupMembers.UserId)`
 
 	var userChannelIDs []*model.UserChannelIDPair
 
 	_, err := s.GetReplica().Select(&userChannelIDs, sql)
 	if err != nil {
-		result.Err = model.NewAppError("SqlGroupStore.PendingChannelMemberRemovals", "store.select_error", nil, "", http.StatusInternalServerError)
+		result.Err = model.NewAppError("SqlGroupStore.PendingChannelMemberRemovals", "store.select_error", nil, err.Error(), http.StatusInternalServerError)
 	}
 
 	result.Data = userChannelIDs
